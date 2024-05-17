@@ -11,27 +11,84 @@ from target_iceberg.sinks import (
 
 
 class Targeticeberg(Target):
-    """Sample target for iceberg."""
+    """Sample target for icebergdb."""
 
     name = "target-iceberg"
-
     config_jsonschema = th.PropertiesList(
         th.Property(
-            "filepath",
+            "aws_access_key",
             th.StringType,
-            description="The path to the target output file",
+            secret=True,
+            description="AWS S3 bucket access key",
+            required=True
         ),
         th.Property(
-            "file_naming_scheme",
+            "aws_secret_key",
             th.StringType,
-            description="The scheme with which output files will be named",
+            secret=True,
+            description="AWS S3 bucket secret key",
+            required=True
         ),
         th.Property(
-            "auth_token",
+            "aws_region",
             th.StringType,
-            secret=True,  # Flag config as protected.
-            description="The path to the target output file",
+            description="AWS region for S3 bucket",
+            required=False
         ),
+        th.Property(
+            "s3_endpoint",
+            th.StringType,
+            description="s3.endpoint",
+            required=True
+        ),
+        th.Property(
+            "hive_thrift_uri",
+            th.StringType,
+            description="URI for Hive Thrift service",
+            required=True
+        ),
+        th.Property(
+            "warehouse_uri",
+            th.StringType,
+            description="URI for the data warehouse (e.g., S3 bucket path)",
+            required=True
+        ),
+        th.Property(
+            "database",
+            th.StringType,
+            description="HIVE database",
+            required=False
+        ),
+        th.Property(
+            "table_exists",
+            th.StringType,
+            default="replace",
+            description="append: append data,"
+                        "overwrite: overwrite"
+                        "replace: recreate table add append data,"
+                        "skip: skip data import,",
+            required=False
+        ),
+        th.Property(
+            "partition_by",
+            th.ArrayType(th.StringType),
+            description="List of column names to partition the table by",
+            required=False
+        ),
+        th.Property(
+            "decimal_precision",
+            th.IntegerType,
+            default=32,
+            description="Unable to determine what the decimal precision length is, the default value is 32",
+            required=False
+        ),
+        th.Property(
+            "decimal_scale",
+            th.IntegerType,
+            default=16,
+            description="Unable to determine what the scale precision length is, the default value is 32",
+            required=False
+        )
     ).to_dict()
 
     default_sink_class = icebergSink
