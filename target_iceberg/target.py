@@ -60,22 +60,6 @@ class Targeticeberg(Target):
             required=False
         ),
         th.Property(
-            "table_exists",
-            th.StringType,
-            default="replace",
-            description="append: append data,"
-                        "overwrite: overwrite"
-                        "replace: recreate table add append data,"
-                        "skip: skip data import,",
-            required=False
-        ),
-        th.Property(
-            "partition_by",
-            th.ArrayType(th.StringType),
-            description="List of column names to partition the table by",
-            required=False
-        ),
-        th.Property(
             "decimal_precision",
             th.IntegerType,
             default=32,

@@ -38,7 +38,7 @@ class icebergSink(BatchSink):
         self.default_decimal_precision = self.config.get("decimal_precision")
         self.default_decimal_scale = self.config.get("decimal_scale")
         self.database = self.config.get('database', None)
-        self.table_exists_policy = self.config.get('table_exists')
+        self.init_pyiceberg()
 
     def start_batch(self, context: dict) -> None:
         """Start a batch.
@@ -78,6 +78,13 @@ class icebergSink(BatchSink):
                 "s3.secret-access-key": f"{self.aws_secret_key}",
             }
         )
+        if not self.database:
+            self.database = self.stream_name.split('-')[0]
+            self.stream_name = self.stream_name.split('-')[1]
+        if not self.validate_database():
+            self.create_database()
+        self.create_or_load_table()
+        self.format_data_schema()
 
     def validate_database(self):
         try:
@@ -200,29 +207,12 @@ class icebergSink(BatchSink):
         except Exception as e:
             self.logger.error(e)
 
-    def write_data(self, df, table_exists):
-
-        if table_exists:
-            if self.table_exists_policy == 'append':
-                self.table_instance.append(df)
-                self.logger.info(f"table {self.database}.{self.stream_name} append  successfully written")
-            elif self.table_exists_policy == 'overwrite':
-                self.table_instance.overwrite(df)
-                self.logger.info(f"table {self.database}.{self.stream_name} overwrite  successfully written")
-            elif self.table_exists_policy == 'replace':
-                self.catalog.drop_table((self.database, self.stream_name))
-                self.logger.info(f"table {self.database}.{self.stream_name}  has been deleted.")
-                table_exists = self.create_or_load_table()
-                if not table_exists:
-                    self.table_instance.append(df)
-                    self.logger.info(f"table {self.database}.{self.stream_name} replace  successfully written")
-            elif self.table_exists_policy == 'skip':
-                self.logger.info(f"Because the parameter table  {self.database}.{self.stream_name}  was skipped ")
-            else:
-                self.logger.error(f"Unsupported table exists policy {self.table_exists_policy}")
-        else:
+    def write_data(self, df):
+        try:
             self.table_instance.append(df)
             self.logger.info(f"table {self.database}.{self.stream_name} append  successfully written")
+        except Exception as e:
+            self.logger.error(e)
 
     def process_batch(self, context: dict) -> None:
         """Write out any prepped records and return once fully written.
@@ -231,13 +221,5 @@ class icebergSink(BatchSink):
             context: Stream partition or context dictionary.
         """
 
-        self.init_pyiceberg()
-        if not self.database:
-            self.database = self.stream_name.split('-')[0]
-            self.stream_name = self.stream_name.split('-')[1]
-        if not self.validate_database():
-            self.create_database()
-        table_exists = self.create_or_load_table()
-        self.format_data_schema()
         df = self.create_dataframe(self.rows)
-        self.write_data(df, table_exists)
+        self.write_data(df)
